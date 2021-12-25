@@ -1,26 +1,41 @@
+/*
+* @author allogic
+* @file trace.h
+* @brief OpCode tracing utilities.
+* @copyright allogic 2021. All Rights Reserved.
+*/
+
 #ifndef _TRACE_H
 #define _TRACE_H
 
 #include "global.h"
 #include "common.h"
-#include "krnl.h"
 
 /*
-* Stack frames.
+* Trace thread utilities.
 */
 
-typedef struct _STACK_FRAME_X64
+typedef struct _TRACE_CONTEXT
 {
-  ULONG64 AddrOffset;
-  ULONG64 StackOffset;
-  ULONG64 FrameOffset;
-} STACK_FRAME_X64, * PSTACK_FRAME_X64;
+  HANDLE Thread;
+  ULONG Id;
+  ULONG Pid;
+  ULONG ThreadCount;
+  KM_THREAD_PROCESS Threads[1024];
+  ULONG64 Address;
+  BOOL Running;
+  KEVENT Event;
+  ULONG64 OpCodes[64];
+} TRACE_CONTEXT, * PTRACE_CONTEXT;
 
-/*
-* Tracing utilities.
-*/
+LONG
+KmContainsValue(
+  PULONG64 opCodes,
+  ULONG opCodesCount,
+  ULONG64 value);
 
-VOID TraceContext(HANDLE tid, SIZE_T iterations);
-VOID TraceStack(HANDLE pid, HANDLE tid, PWCHAR moduleName, SIZE_T iterations);
+VOID
+KmTraceThread(
+  PVOID context);
 
 #endif

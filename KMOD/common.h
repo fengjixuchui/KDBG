@@ -1,3 +1,10 @@
+/*
+* @author allogic
+* @file common.h
+* @brief Shared datatypes.
+* @copyright allogic 2021. All Rights Reserved.
+*/
+
 #ifndef _COMMON_H
 #define _COMMON_H
 
@@ -7,20 +14,23 @@
 * Common request types.
 */
 
-#define KMOD_MAX_MODULES_KERNEL 128
-#define KMOD_MAX_MODULES_PROCESS 128
-#define KMOD_MAX_THREADS 128
+typedef struct _KM_MODULE_PROCESS
+{
+  WCHAR Name[256];
+  ULONG64 Base;
+  ULONG Size;
+} KM_MODULE_PROCESS, * PKM_MODULE_PROCESS;
+typedef struct _KM_MODULE_KERNEL
+{
+  CHAR Name[256];
+  ULONG64 Base;
+  ULONG Size;
+} KM_MODULE_KERNEL, * PKM_MODULE_KERNEL;
 
-typedef struct _MODULE
+typedef struct _KM_THREAD_PROCESS
 {
-  WCHAR Name[256] = {};
-  ULONG64 Base = 0;
-  SIZE_T Size = 0;
-} MODULE, * PMODULE;
-typedef struct _THREAD
-{
-  ULONG Tid = 0;
-  ULONG Pid = 0;
-} THREAD, * PTHREAD;
+  ULONG Tid;
+  ULONG Pid;
+} KM_THREAD_PROCESS, * PKM_THREAD_PROCESS;
 
 #endif

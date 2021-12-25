@@ -24,19 +24,37 @@
     </Inf>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="kmod.cpp">
+    <ClCompile Include="kmod.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="krnl.cpp">
+    <ClCompile Include="undoc.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="thread.cpp">
+    <ClCompile Include="thread.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="pe.cpp">
+    <ClCompile Include="pe.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="trace.cpp">
+    <ClCompile Include="trace.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="device.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="memory.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="process.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="scanner.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="debugger.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="interrupt.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -47,7 +65,7 @@
     <ClInclude Include="ioctrl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="krnl.h">
+    <ClInclude Include="undoc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="thread.h">
@@ -62,8 +80,28 @@
     <ClInclude Include="trace.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="dbg.h">
+    <ClInclude Include="device.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="memory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="process.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="scanner.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="debugger.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="interrupt.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="ASM\dbg.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
   </ItemGroup>
 </Project>

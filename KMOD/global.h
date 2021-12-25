@@ -1,3 +1,10 @@
+/*
+* @author allogic
+* @file global.h
+* @brief Global includes/utilities.
+* @copyright allogic 2021. All Rights Reserved.
+*/
+
 #ifndef _GLOBAL_H
 #define _GLOBAL_H
 
@@ -8,11 +15,6 @@
 
 #include <stddef.h>
 #include <windef.h>
-
-#include <wsk.h>
-
-#include "ksocket.h"
-#include "berkeley.h"
 
 #define _KM_STR(VAL) #VAL
 #define KM_STR(VAL) _KM_STR(VAL)
@@ -31,7 +33,7 @@ static ULONG KmNextRandom(ULONG min, ULONG max)
 }
 static ULONG KmNextPoolTag()
 {
-  constexpr ULONG poolTags[] =
+  static ULONG poolTags[] =
   {
     ' prI', // Allocated IRP packets
     '+prI', // I/O verifier allocated IRP packets
@@ -54,9 +56,8 @@ static ULONG KmNextPoolTag()
     'cScC', // Cache Manager Shared Cache Map
     'KgxD', // Vista display driver support
   };
-  constexpr ULONG numPoolTags = ARRAYSIZE(poolTags);
+  static ULONG numPoolTags = ARRAYSIZE(poolTags);
   const ULONG index = KmNextRandom(0, numPoolTags);
-  NT_ASSERT(index <= numPoolTags - 1);
   return index;
 }
 
@@ -72,13 +73,13 @@ static VOID KmFreeMemory(PVOID ptr)
   ExFreePool(ptr);
 }
 
-#define DELAY_ONE_MICROSECOND 	(-10)
-#define DELAY_ONE_MILLISECOND	(DELAY_ONE_MICROSECOND*1000)
+#define KM_DELAY_ONE_MICROSECOND (-10)
+#define KM_DELAY_ONE_MILLISECOND (KM_DELAY_ONE_MICROSECOND*1000)
 
 static VOID KmSleep(LONG ms)
 {
   LARGE_INTEGER interval;
-  interval.QuadPart = DELAY_ONE_MILLISECOND;
+  interval.QuadPart = KM_DELAY_ONE_MILLISECOND;
   interval.QuadPart *= ms;
   KeDelayExecutionThread(KernelMode, 0, &interval);
 }

@@ -130,13 +130,13 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
-    <IncludePath>$(SolutionDir)KSOC;$(IncludePath)</IncludePath>
-    <LibraryPath>$(SolutionDir)$(IntDir);$(LibraryPath)</LibraryPath>
+    <IncludePath>$(SolutionDir)inc;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
-    <IncludePath>$(SolutionDir)KSOC;$(IncludePath)</IncludePath>
-    <LibraryPath>$(SolutionDir)$(IntDir);$(LibraryPath)</LibraryPath>
+    <IncludePath>$(SolutionDir)inc;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
@@ -174,11 +174,12 @@
       <WppKernelMode>true</WppKernelMode>
       <TreatWarningAsError>false</TreatWarningAsError>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <LanguageStandard_C>Default</LanguageStandard_C>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <EntryPointSymbol>DriverEntry</EntryPointSymbol>
-      <AdditionalDependencies>KSOC.lib;Netio.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <OptimizeReferences>false</OptimizeReferences>
     </Link>
@@ -199,11 +200,12 @@
       <WppKernelMode>true</WppKernelMode>
       <TreatWarningAsError>false</TreatWarningAsError>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <LanguageStandard_C>Default</LanguageStandard_C>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <EntryPointSymbol>DriverEntry</EntryPointSymbol>
-      <AdditionalDependencies>KSOC.lib;Netio.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <OptimizeReferences>false</OptimizeReferences>
     </Link>
@@ -252,21 +254,35 @@
     <FilesToPackage Include="$(TargetPath)" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="kmod.cpp" />
-    <ClCompile Include="krnl.cpp" />
-    <ClCompile Include="pe.cpp" />
-    <ClCompile Include="thread.cpp" />
-    <ClCompile Include="trace.cpp" />
+    <ClCompile Include="debugger.c" />
+    <ClCompile Include="device.c" />
+    <ClCompile Include="interrupt.c" />
+    <ClCompile Include="kmod.c" />
+    <ClCompile Include="memory.c" />
+    <ClCompile Include="process.c" />
+    <ClCompile Include="scanner.c" />
+    <ClCompile Include="undoc.c" />
+    <ClCompile Include="pe.c" />
+    <ClCompile Include="thread.c" />
+    <ClCompile Include="trace.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.h" />
-    <ClInclude Include="dbg.h" />
+    <ClInclude Include="debugger.h" />
+    <ClInclude Include="device.h" />
     <ClInclude Include="global.h" />
+    <ClInclude Include="interrupt.h" />
     <ClInclude Include="ioctrl.h" />
-    <ClInclude Include="krnl.h" />
+    <ClInclude Include="memory.h" />
+    <ClInclude Include="process.h" />
+    <ClInclude Include="scanner.h" />
+    <ClInclude Include="undoc.h" />
     <ClInclude Include="pe.h" />
     <ClInclude Include="thread.h" />
     <ClInclude Include="trace.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="ASM\dbg.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

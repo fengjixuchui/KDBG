@@ -1,106 +1,330 @@
 #include "global.h"
-#include "shell.h"
-#include "view.h"
+#include "common.h"
+#include "ioctrl.h"
 #include "util.h"
-
-// TODO: create view serializer via JSON
-// TODO: finish event handling
-// TODO: fix text input max length
-// TODO: start using windows primitive typedefs for everything
-// TODO: implement PDB mapping
-
-using namespace std;
+#include "disasm.h"
 
 /*
-* View utilities.
+* I/O communication device.
 */
 
-string IndexToName(uint32_t index)
-{
-  static map<uint32_t, string> map
-  {
-    { 0, "module" },
-    { 1, "memory" },
-    { 2, "scanner" },
-    { 3, "debugger" },
-  };
-  return map[index];
-}
-uint32_t NameToIndex(string name)
-{
-  static map<string, uint32_t> map
-  {
-    { "module", 0 },
-    { "memory", 1 },
-    { "scanner", 2 },
-    { "debugger", 3 },
-  };
-  return map[name];
-}
+#define KC_DEVICE_NAME "\\\\.\\KMOD"
 
-/*
-* Communication socket.
-*/
-
-PADDRINFOA AddressInfo = NULL;
-SOCKET Socket = INVALID_SOCKET;
+HANDLE Device = NULL;
 
 /*
 * Entry point.
 */
 
-int32_t wmain(int32_t argc, wchar_t* argv[])
+INT
+wmain(
+  INT argc,
+  PWCHAR argv[])
 {
-  Shell shell;
-  USHORT thirdWidth = (USHORT)(shell.Width() / 3);
-  USHORT halfHeight = (USHORT)(shell.Height() / 2);
-  Module moduleView{ NULL, &shell, 0, 0, 0, 0, 0, L"Modules", 32 };
-  Thread threadView{ NULL, &shell, 1, 0, 0, 0, 0, L"Threads", 32 };
-  Memory memoryView{ NULL, &shell, 2, 0, 0, 0, 0, L"Memory", 512, 0, L"kernel32.dll" };
-  Scanner scannerView{ NULL, &shell, 3, 0, 0, 0, 0, L"Scanner" };
-  Debugger debuggerView{ NULL, &shell, 4, 0, 0, 0, 0, L"Debugger", 512, 0, L"taskmgr.exe" };
-  vector<View*> views
+  Device = CreateFileA(KC_DEVICE_NAME, GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0);
+  if (Device != NULL)
   {
-    &moduleView,
-    &threadView,
-    &memoryView,
-    &scannerView,
-    &debuggerView,
-  };
-  for (View* view : views)
-  {
-    //view->Fetch();
-    view->UpdateLayout();
-    view->Render();
-  }
-  SIZE_T selectedView = NameToIndex("scanner");
-  State state = KCLI_CTRL_MODE;
-  while (true)
-  {
-    switch (state)
+    // Write API
+    if (_wcsicmp(L"/WriteMemoryProcess", argv[1]) == 0)
     {
-      case KCLI_CTRL_MODE:
+      WRITE_MEMORY_PROCESS request = {};
+      request.Pid = GetProcessIdFromNameW(argv[2]);
+      wcscpy_s(request.ImageName, argv[3]);
+      request.Offset = wcstoul(argv[4], NULL, 16);
+      request.Size = wcstoul(argv[5], NULL, 10);
+      HexToBytesW(request.Bytes, argv[6]);
+
+      DeviceIoControl(Device, KM_WRITE_MEMORY_PROCESS, &request, sizeof(request), 0, 0, 0, 0);
+      printf("\n");
+    }
+    if (_wcsicmp(L"/WriteMemoryKernel", argv[1]) == 0)
+    {
+      WRITE_MEMORY_KERNEL request = {};
+      Utf16ToUtf8(argv[2], request.ImageName);
+      request.Offset = wcstoul(argv[3], NULL, 16);
+      request.Size = wcstoul(argv[4], NULL, 10);
+      HexToBytesW(request.Bytes, argv[5]);
+
+      DeviceIoControl(Device, KM_WRITE_MEMORY_KERNEL, &request, sizeof(request), 0, 0, 0, 0);
+      printf("\n");
+    }
+    // Read API
+    if (_wcsicmp(L"/ReadMemoryProcess", argv[1]) == 0)
+    {
+      READ_MEMORY_PROCESS request = {};
+      request.Pid = GetProcessIdFromNameW(argv[2]);
+      wcscpy_s(request.ImageName, argv[3]);
+      request.Offset = wcstoul(argv[4], NULL, 16);
+      request.Size = wcstoul(argv[5], NULL, 10);
+
+      PBYTE response = (PBYTE)malloc(sizeof(BYTE) * request.Size);
+
+      if (DeviceIoControl(Device, KM_READ_MEMORY_PROCESS, &request, sizeof(request), response, sizeof(BYTE) * request.Size, 0, 0))
       {
-        shell.Poll(views, selectedView);
-        if (KeyDown(shell.InputEvent, VK_TAB))
+        printf("\n");
+        printf("0x%08X ", request.Offset);
+        for (ULONG i = 0; i < request.Size; i++)
         {
-          state = KCLI_CMD_MODE;
+          printf("%02X ", response[i]);
+          if (i != 0 && (i + 1) < request.Size && (i + 1) % 32 == 0)
+            printf("\n0x%08X ", request.Offset + (ULONG)i);
         }
-        break;
+        printf("\n\n");
+        DisassembleBytes(response, request.Size, request.Offset);
+        printf("\n");
       }
-      case KCLI_CMD_MODE:
+
+      free(response);
+    }
+    if (_wcsicmp(L"/ReadMemoryKernel", argv[1]) == 0)
+    {
+      READ_MEMORY_KERNEL request = {};
+      Utf16ToUtf8(argv[2], request.ImageName);
+      request.Offset = wcstoul(argv[3], NULL, 16);
+      request.Size = wcstoul(argv[4], NULL, 10);
+
+      PBYTE response = (PBYTE)malloc(sizeof(BYTE) * request.Size);
+
+      if (DeviceIoControl(Device, KM_READ_MEMORY_KERNEL, &request, sizeof(request), response, sizeof(BYTE) * request.Size, 0, 0))
       {
-        shell.Read(views[selectedView]);
-        views[selectedView]->Command(shell.InputBuffer);
-        state = KCLI_CTRL_MODE;
-        break;
+        printf("\n");
+        printf("0x%08X ", request.Offset);
+        for (ULONG i = 0; i < request.Size; i++)
+        {
+          printf("%02X ", response[i]);
+          if (i != 0 && (i + 1) < request.Size && (i + 1) % 32 == 0)
+            printf("\n0x%08X ", request.Offset + (ULONG)i);
+        }
+        printf("\n\n");
+        DisassembleBytes(response, request.Size, request.Offset);
+        printf("\n");
+      }
+
+      free(response);
+    }
+    if (_wcsicmp(L"/ReadModulesProcess", argv[1]) == 0)
+    {
+      READ_MODULES_PROCESS request = {};
+      request.Pid = GetProcessIdFromNameW(argv[2]);
+      request.Size = wcstoul(argv[3], NULL, 10);
+
+      PKM_MODULE_PROCESS response = (PKM_MODULE_PROCESS)malloc(sizeof(KM_MODULE_PROCESS) * request.Size);
+
+      if (DeviceIoControl(Device, KM_READ_MODULES_PROCESS, &request, sizeof(request), response, sizeof(KM_MODULE_PROCESS) * request.Size, 0, 0))
+      {
+        printf("\n");
+        printf("  Start            End                    Size Name\n");
+        printf("----------------------------------------------------------------\n");
+        for (ULONG i = 0; i < request.Size; ++i)
+        {
+          printf("  %16p %16p %10lu %ls\n",
+            (PVOID)response[i].Base,
+            (PVOID)(response[i].Base + response[i].Size),
+            response[i].Size,
+            response[i].Name);
+        }
+        printf("\n");
+      }
+
+      free(response);
+    }
+    if (_wcsicmp(L"/ReadModulesKernel", argv[1]) == 0)
+    {
+      READ_MODULES_KERNEL request = {};
+      request.Size = wcstoul(argv[2], NULL, 10);
+
+      PKM_MODULE_KERNEL response = (PKM_MODULE_KERNEL)malloc(sizeof(KM_MODULE_KERNEL) * request.Size);
+
+      if (DeviceIoControl(Device, KM_READ_MODULES_KERNEL, &request, sizeof(request), response, sizeof(KM_MODULE_KERNEL) * request.Size, 0, 0))
+      {
+        printf("\n");
+        printf("  Start            End                    Size Name\n");
+        printf("----------------------------------------------------------------\n");
+        for (ULONG i = 0; i < request.Size; ++i)
+        {
+          printf("  %16p %16p %10lu %s\n",
+            (PVOID)response[i].Base,
+            (PVOID)(response[i].Base + response[i].Size),
+            response[i].Size,
+            response[i].Name);
+        }
+        printf("\n");
+      }
+
+      free(response);
+    }
+    if (_wcsicmp(L"/ReadThreadsProcess", argv[1]) == 0)
+    {
+      READ_THREADS_PROCESS request = {};
+      request.Pid = GetProcessIdFromNameW(argv[2]);
+      request.Size = wcstoul(argv[3], NULL, 10);
+
+      PKM_THREAD_PROCESS response = (PKM_THREAD_PROCESS)malloc(sizeof(KM_THREAD_PROCESS) * request.Size);
+
+      if (DeviceIoControl(Device, KM_READ_THREADS_PROCESS, &request, sizeof(request), response, sizeof(KM_THREAD_PROCESS) * request.Size, 0, 0))
+      {
+        printf("\n");
+        printf("         Pid        Tid\n");
+        printf("----------------------------------------------------------------\n");
+        for (ULONG i = 0; i < request.Size; ++i)
+        {
+          printf("  %10lu %10lu\n",
+            response[i].Pid,
+            response[i].Tid);
+        }
+        printf("\n");
+      }
+
+      free(response);
+    }
+    if (_wcsicmp(L"/ReadScanResults", argv[1]) == 0)
+    {
+      READ_SCAN_RESULTS request = {};
+
+      if (DeviceIoControl(Device, KM_READ_SCAN_RESULTS, &request, sizeof(request), 0, 0, 0, 0))
+      {
+
       }
     }
-  };
-  for (View*& view : views)
-  {
-    delete view;
-    view = nullptr;
+    // Trace API
+    if (_wcsicmp(L"/TraceContextStart", argv[1]) == 0)
+    {
+      TRACE_CONTEXT_START request = {};
+      request.Pid = GetProcessIdFromNameW(argv[2]);
+      request.Address = wcstoull(argv[3], NULL, 16);
+      printf("Address is %p\n", (PVOID)request.Address);
+      ULONG response = 0;
+
+      if (DeviceIoControl(Device, KM_TRACE_CONTEXT_START, &request, sizeof(request), &response, sizeof(response), 0, 0))
+      {
+        printf("\n");
+        printf("Trace %lu started\n", response);
+        printf("\n");
+      }
+    }
+    if (_wcsicmp(L"/TraceContextStop", argv[1]) == 0)
+    {
+      TRACE_CONTEXT_STOP request = {};
+      request.Id = wcstoul(argv[2], NULL, 10);
+
+      ULONG64 response[64] = {};
+
+      if (DeviceIoControl(Device, KM_TRACE_CONTEXT_STOP, &request, sizeof(request), &response, sizeof(response), 0, 0))
+      {
+        printf("\n");
+        printf("Trace %lu stopped\n", request.Id);
+        printf("\n");
+        for (ULONG i = 0; i < 64; ++i)
+        {
+          printf("%p\n", (PVOID)response[i]);
+        }
+        printf("\n");
+      }
+    }
+    // Debug API
+    if (_wcsicmp(L"/DebugBreakpointSet", argv[1]) == 0)
+    {
+      DEBUG_BREAKPOINT_SET request = {};
+      request.Base = wcstoul(argv[2], NULL, 16);
+      request.Type = (DEBUG_BREAKPOINT_SET::TYPE)wcstoul(argv[3], NULL, 10);
+
+      if (DeviceIoControl(Device, KM_DEBUG_BREAKPOINT_SET, &request, sizeof(request), 0, 0, 0, 0))
+      {
+
+      }
+    }
+    if (_wcsicmp(L"/DebugBreakpointRem", argv[1]) == 0)
+    {
+      DEBUG_BREAKPOINT_REM request = {};
+      request.Base = wcstoul(argv[2], NULL, 16);
+
+      if (DeviceIoControl(Device, KM_DEBUG_BREAKPOINT_REM, &request, sizeof(request), 0, 0, 0, 0))
+      {
+
+      }
+    }
+    // Scan API
+    if (_wcsicmp(L"/ScanNew", argv[1]) == 0)
+    {
+      SCAN_NEW request = {};
+
+      if (DeviceIoControl(Device, KM_SCAN_NEW, &request, sizeof(request), 0, 0, 0, 0))
+      {
+
+      }
+    }
+    if (_wcsicmp(L"/ScanUndo", argv[1]) == 0)
+    {
+      SCAN_UNDO request = {};
+
+      if (DeviceIoControl(Device, KM_SCAN_UNDO, &request, sizeof(request), 0, 0, 0, 0))
+      {
+
+      }
+    }
+    if (_wcsicmp(L"/ScanInt", argv[1]) == 0)
+    {
+      SCAN_INT request = {};
+
+      if (DeviceIoControl(Device, KM_SCAN_INT, &request, sizeof(request), 0, 0, 0, 0))
+      {
+
+      }
+    }
+    if (_wcsicmp(L"/ScanReal", argv[1]) == 0)
+    {
+      SCAN_REAL request = {};
+
+      if (DeviceIoControl(Device, KM_SCAN_REAL, &request, sizeof(request), 0, 0, 0, 0))
+      {
+
+      }
+    }
+    if (_wcsicmp(L"/ScanBytes", argv[1]) == 0)
+    {
+      SCAN_BYTES request = {};
+
+      if (DeviceIoControl(Device, KM_SCAN_BYTES, &request, sizeof(request), 0, 0, 0, 0))
+      {
+
+      }
+    }
+    if (_wcsicmp(L"/ScanFilterChanged", argv[1]) == 0)
+    {
+      SCAN_FILTER_CHANGED request = {};
+
+      if (DeviceIoControl(Device, KM_SCAN_FILTER_CHANGED, &request, sizeof(request), 0, 0, 0, 0))
+      {
+
+      }
+    }
+    if (_wcsicmp(L"/ScanFilterUnchanged", argv[1]) == 0)
+    {
+      SCAN_FILTER_UNCHANGED request = {};
+
+      if (DeviceIoControl(Device, KM_SCAN_FILTER_UNCHANGED, &request, sizeof(request), 0, 0, 0, 0))
+      {
+
+      }
+    }
+    if (_wcsicmp(L"/ScanFilterIncreased", argv[1]) == 0)
+    {
+      SCAN_FILTER_INCREASED request = {};
+
+      if (DeviceIoControl(Device, KM_SCAN_FILTER_INCREASED, &request, sizeof(request), 0, 0, 0, 0))
+      {
+
+      }
+    }
+    if (_wcsicmp(L"/ScanFilterDecreased", argv[1]) == 0)
+    {
+      SCAN_FILTER_DECREASED request = {};
+
+      if (DeviceIoControl(Device, KM_SCAN_FILTER_DECREASED, &request, sizeof(request), 0, 0, 0, 0))
+      {
+
+      }
+    }
   }
   return 0;
 }
